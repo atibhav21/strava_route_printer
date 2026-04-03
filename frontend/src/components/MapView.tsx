@@ -9,9 +9,10 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || '';
 interface MapViewProps {
     route: RouteDetails | null;
     theme: Theme;
+    onMapReady?: (map: mapboxgl.Map) => void;
 }
 
-export const MapView = ({ route, theme }: MapViewProps) => {
+export const MapView = ({ route, theme, onMapReady }: MapViewProps) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
     const routeCoordinatesRef = useRef<[number, number][] | null>(null);
@@ -25,9 +26,11 @@ export const MapView = ({ route, theme }: MapViewProps) => {
             style: theme.map.style,
             center: [-122.4, 37.8], // Default center (San Francisco)
             zoom: 12,
+            preserveDrawingBuffer: true,
         });
 
         map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        onMapReady?.(map.current);
 
         return () => {
             map.current?.remove();

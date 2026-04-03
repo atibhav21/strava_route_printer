@@ -5,8 +5,10 @@ import { getTheme } from './themes';
 import { RouteSearch } from './components/RouteSearch';
 import { MapView } from './components/MapView';
 import { StatsPanel } from './components/StatsPanel';
+import { PrintComposer } from './components/PrintComposer';
 import { ThemeSelector } from './components/ThemeSelector';
 import { AuthLanding } from './components/AuthLanding';
+// import type mapboxgl from 'mapbox-gl';
 import './styles/main.css';
 
 function App() {
@@ -16,6 +18,7 @@ function App() {
     const [selectedRoute, setSelectedRoute] = useState<RouteDetails | null>(null);
     const [routeStats, setRouteStats] = useState<RouteStats | null>(null);
     const [loading, setLoading] = useState(false);
+    const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
 
     // Apply theme to body
     useEffect(() => {
@@ -143,10 +146,22 @@ function App() {
                         </div>
                     )}
                     <StatsPanel route={selectedRoute} stats={routeStats} theme={currentTheme} />
+                    <PrintComposer
+                        route={selectedRoute}
+                        stats={routeStats}
+                        theme={currentTheme}
+                        map={mapInstance}
+                    />
                 </aside>
 
                 <main className="main-content">
-                    <MapView route={selectedRoute} theme={currentTheme} />
+                    <MapView
+                        route={selectedRoute}
+                        theme={currentTheme}
+                        onMapReady={(m) => {
+                            setMapInstance(m);
+                        }}
+                    />
                 </main>
             </div>
         </div>
