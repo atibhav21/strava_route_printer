@@ -23,6 +23,13 @@ export const getRouteStats = async (routeId: number): Promise<RouteStats> => {
     return response.data;
 };
 
+export const uploadRouteFromFile = async (file: File): Promise<RouteDetails> => {
+    const form = new FormData();
+    form.append('file', file);
+    const response = await api.post<RouteDetails>('/routes/upload', form);
+    return response.data;
+};
+
 // Utility function to decode polyline
 export const decodePolyline = (encoded: string): [number, number][] => {
     const points: [number, number][] = [];

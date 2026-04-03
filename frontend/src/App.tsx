@@ -19,21 +19,23 @@ function App() {
         document.body.style.backgroundColor = currentTheme.colors.background;
     }, [currentTheme]);
 
-    const handleRouteSelect = async (route: Route) => {
+    const handleRouteSelect = async (route: Route, preloadedDetails?: RouteDetails) => {
         setLoading(true);
         setRouteStats(null);
 
         try {
-            // Fetch full route details
-            const details = await getRouteDetails(route.id);
-            setSelectedRoute(details);
+            if (preloadedDetails) {
+                setSelectedRoute(preloadedDetails);
+            } else {
+                const details = await getRouteDetails(route.id);
+                setSelectedRoute(details);
 
-            // Try to fetch stats (might not always be available)
-            try {
-                const stats = await getRouteStats(route.id);
-                setRouteStats(stats);
-            } catch (err) {
-                console.log('Stats not available for this route');
+                try {
+                    const stats = await getRouteStats(route.id);
+                    setRouteStats(stats);
+                } catch (err) {
+                    console.log('Stats not available for this route');
+                }
             }
         } catch (err) {
             console.error('Failed to load route details:', err);

@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Route } from '../types';
-import { searchRoutes } from '../services/api';
+import { useRef, useState } from 'react';
+import { Route, RouteDetails } from '../types';
+import { searchRoutes, uploadRouteFromFile } from '../services/api';
 
 interface RouteSearchProps {
-    onRouteSelect: (route: Route) => void;
+    onRouteSelect: (route: Route, preloadedDetails?: RouteDetails) => void;
     theme: any;
 }
 
@@ -12,6 +12,7 @@ export const RouteSearch = ({ onRouteSelect, theme }: RouteSearchProps) => {
     const [results, setResults] = useState<Route[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSearch = async () => {
         if (!query.trim()) return;
@@ -45,8 +46,65 @@ export const RouteSearch = ({ onRouteSelect, theme }: RouteSearchProps) => {
         return meters.toFixed(0) + ' m';
     };
 
+    const routeElevation = (route: Route) =>
+        route.total_elevation_gain ?? route.elevation_gain ?? 0;
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+
+        setLoading(true);
+        setError(null);
+        try {
+            const details = await uploadRouteFromFile(file);
+            const route: Route = {
+                id: details.id,
+                name: details.name,
+                distance: details.distance,
+                total_elevation_gain: details.total_elevation_gain,
+                map: details.map,
+            };
+            onRouteSelect(route, details);
+        } catch (err: unknown) {
+            const ax = err as { response?: { data?: { detail?: string } } };
+            const detail = ax.response?.data?.detail;
+            setError(
+                typeof detail === 'string'
+                    ? detail
+                    : 'Could not read GPX. Export the activity or route from Strava as GPX (.gpx).'
+            );
+            console.error('Upload error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="route-search">
+            <div className="file-upload-row">
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".gpx,application/gpx+xml"
+                    onChange={handleFileChange}
+                    className="file-input-hidden"
+                    aria-label="Upload GPX from Strava"
+                />
+                <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={loading}
+                    className="search-button upload-route-button"
+                    style={{
+                        backgroundColor: theme.colors.secondary,
+                        color: '#ffffff',
+                        width: '100%',
+                    }}
+                >
+                    {loading ? 'Loading…' : 'Upload GPX (Strava export)'}
+                </button>
+            </div>
             <div className="search-input-container">
                 <input
                     type="text"
@@ -97,7 +155,7 @@ export const RouteSearch = ({ onRouteSelect, theme }: RouteSearchProps) => {
                             >
                                 <div className="result-name">{route.name}</div>
                                 <div className="result-details" style={{ color: theme.colors.textSecondary }}>
-                                    {formatDistance(route.distance)} • {formatElevation(route.elevation_gain)} elevation
+                                    {formatDistance(route.distance)} • {formatElevation(routeElevation(route))} elevation
                                 </div>
                             </li>
                         ))}

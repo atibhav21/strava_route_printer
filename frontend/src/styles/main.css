@@ -76,6 +76,22 @@ body {
     border-bottom: 1px solid #e0e0e0;
 }
 
+.file-upload-row {
+    margin-bottom: 1rem;
+}
+
+.file-input-hidden {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.upload-route-button {
+    margin-bottom: 0;
+}
+
 .search-input-container {
     display: flex;
     gap: 0.5rem;

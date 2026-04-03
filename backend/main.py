@@ -1,11 +1,12 @@
 """FastAPI application entry point"""
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from .config import settings
 from .strava_client import strava_client
 from .models import SummaryActivity, DetailedActivity
+from .route_file import parse_route_file
 
 # Create FastAPI app
 app = FastAPI(
@@ -30,6 +31,7 @@ async def root():
     return {"status": "ok", "message": "Strava Route Viewer API", "version": "0.1.0"}
 
 
+@app.get("/api/routes/search", response_model=List[SummaryActivity])
 @app.get("/api/activities/search", response_model=List[SummaryActivity])
 async def search_activities(q: str = Query(..., description="Search query")):
     """
@@ -44,6 +46,21 @@ async def search_activities(q: str = Query(..., description="Search query")):
     return activities
 
 
+@app.post("/api/routes/upload", response_model=DetailedActivity)
+async def upload_route(file: UploadFile = File(...)):
+    """Load a route from a Strava (or standard) GPX file."""
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    name = file.filename or "route"
+    try:
+        return parse_route_file(content=raw, filename=name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.get("/api/routes/{activity_id}", response_model=DetailedActivity)
 @app.get("/api/activities/{activity_id}", response_model=DetailedActivity)
 async def get_activity_details(activity_id: int):
     """

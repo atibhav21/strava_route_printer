@@ -2,10 +2,12 @@ export interface Route {
     id: number;
     name: string;
     distance: number;
-    elevation_gain: number;
+    /** Strava / API uses total_elevation_gain */
+    total_elevation_gain?: number;
+    elevation_gain?: number;
     map: {
-        summary_polyline: string;
-        polyline?: string;
+        summary_polyline?: string | null;
+        polyline?: string | null;
     };
     athlete?: {
         id: number;

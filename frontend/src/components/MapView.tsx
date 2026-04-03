@@ -14,6 +14,7 @@ interface MapViewProps {
 export const MapView = ({ route, theme }: MapViewProps) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
+    const routeCoordinatesRef = useRef<[number, number][] | null>(null);
 
     // Initialize map
     useEffect(() => {
@@ -40,13 +41,26 @@ export const MapView = ({ route, theme }: MapViewProps) => {
         }
     }, [theme]);
 
-    // Update route when it changes
+    // Update route when it or the map style changes
     useEffect(() => {
-        if (!map.current || !route) return;
+        if (!map.current) return;
 
-        // Wait for map to load if it hasn't yet
-        const updateRoute = () => {
+        // Decode and cache the current route coordinates (if any)
+        if (route) {
+            const polyline = route.map.polyline || route.map.summary_polyline;
+            if (!polyline) {
+                routeCoordinatesRef.current = null;
+            } else {
+                routeCoordinatesRef.current = decodePolyline(polyline);
+            }
+        } else {
+            routeCoordinatesRef.current = null;
+        }
+
+        const applyRouteFromCache = () => {
             if (!map.current) return;
+            const coordinates = routeCoordinatesRef.current;
+            if (!coordinates || coordinates.length === 0) return;
 
             // Remove existing route layer and source
             if (map.current.getLayer('route')) {
@@ -55,12 +69,6 @@ export const MapView = ({ route, theme }: MapViewProps) => {
             if (map.current.getSource('route')) {
                 map.current.removeSource('route');
             }
-
-            // Decode polyline
-            const polyline = route.map.polyline || route.map.summary_polyline;
-            if (!polyline) return;
-
-            const coordinates = decodePolyline(polyline);
 
             // Add route source and layer
             map.current.addSource('route', {
@@ -102,10 +110,10 @@ export const MapView = ({ route, theme }: MapViewProps) => {
             });
         };
 
-        if (map.current.loaded()) {
-            updateRoute();
+        if (map.current.isStyleLoaded()) {
+            applyRouteFromCache();
         } else {
-            map.current.on('load', updateRoute);
+            map.current.once('style.load', applyRouteFromCache);
         }
     }, [route, theme]);
 

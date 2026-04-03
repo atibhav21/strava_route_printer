@@ -24,6 +24,9 @@ export const StatsPanel = ({ route, stats, theme }: StatsPanelProps) => {
         return meters.toFixed(0);
     };
 
+    const elevM =
+        route.total_elevation_gain ?? route.elevation_gain ?? 0;
+
     const formatTime = (seconds?: number) => {
         if (!seconds) return 'N/A';
         const hours = Math.floor(seconds / 3600);
@@ -71,7 +74,7 @@ export const StatsPanel = ({ route, stats, theme }: StatsPanelProps) => {
                         Elevation Gain
                     </div>
                     <div className="stat-value" style={{ color: theme.colors.text }}>
-                        {formatElevation(route.elevation_gain)} <span className="stat-unit">m</span>
+                        {formatElevation(elevM)} <span className="stat-unit">m</span>
                     </div>
                 </div>
 
