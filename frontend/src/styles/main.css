@@ -178,6 +178,42 @@ body {
     font-style: italic;
 }
 
+/* Auth Landing */
+.auth-landing {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 3rem 1rem;
+    overflow: auto;
+}
+
+.auth-card {
+    width: min(720px, 100%);
+    border: 1px solid;
+    border-radius: 12px;
+    padding: 2rem 1.75rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.auth-card h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.auth-card p {
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+}
+
+.auth-actions {
+    margin-top: 1.25rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
 /* Stats Panel */
 .stats-panel {
     padding: 1.5rem;

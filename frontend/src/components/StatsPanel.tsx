@@ -40,6 +40,29 @@ export const StatsPanel = ({ route, stats, theme }: StatsPanelProps) => {
         return kmh.toFixed(1);
     };
 
+    const formatPaceFromSpeed = (metersPerSecond?: number) => {
+        if (!metersPerSecond || metersPerSecond <= 0) return 'N/A';
+        const secondsPerKm = 1000 / metersPerSecond;
+        const minutes = Math.floor(secondsPerKm / 60);
+        const seconds = Math.round(secondsPerKm % 60);
+        const paddedSeconds = seconds.toString().padStart(2, '0');
+        return `${minutes}:${paddedSeconds}`;
+    };
+
+    const formatPaceFromTimeAndDistance = (
+        movingTimeSeconds?: number,
+        distanceMeters?: number
+    ) => {
+        if (!movingTimeSeconds || !distanceMeters || distanceMeters <= 0) {
+            return 'N/A';
+        }
+        const secondsPerKm = movingTimeSeconds / (distanceMeters / 1000);
+        const minutes = Math.floor(secondsPerKm / 60);
+        const seconds = Math.round(secondsPerKm % 60);
+        const paddedSeconds = seconds.toString().padStart(2, '0');
+        return `${minutes}:${paddedSeconds}`;
+    };
+
     const formatPower = (watts?: number) => {
         if (!watts) return 'N/A';
         return watts.toFixed(0);
@@ -80,6 +103,30 @@ export const StatsPanel = ({ route, stats, theme }: StatsPanelProps) => {
 
                 {stats && (
                     <>
+                        <div className="stat-item" style={{ borderColor: theme.colors.border }}>
+                            <div className="stat-label" style={{ color: theme.colors.textSecondary }}>
+                                Avg Pace
+                            </div>
+                            <div className="stat-value" style={{ color: theme.colors.text }}>
+                                {stats.average_speed
+                                    ? formatPaceFromSpeed(stats.average_speed)
+                                    : formatPaceFromTimeAndDistance(stats.moving_time, stats.distance)}{' '}
+                                <span className="stat-unit">min/km</span>
+                            </div>
+                        </div>
+
+                        {stats.max_speed && (
+                            <div className="stat-item" style={{ borderColor: theme.colors.border }}>
+                                <div className="stat-label" style={{ color: theme.colors.textSecondary }}>
+                                    Best Pace
+                                </div>
+                                <div className="stat-value" style={{ color: theme.colors.text }}>
+                                    {formatPaceFromSpeed(stats.max_speed)}{' '}
+                                    <span className="stat-unit">min/km</span>
+                                </div>
+                            </div>
+                        )}
+
                         {stats.moving_time && (
                             <div className="stat-item" style={{ borderColor: theme.colors.border }}>
                                 <div className="stat-label" style={{ color: theme.colors.textSecondary }}>

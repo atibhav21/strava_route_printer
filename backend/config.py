@@ -9,8 +9,6 @@ class Settings(BaseSettings):
     # Strava API credentials
     strava_client_id: str
     strava_client_secret: str
-    strava_access_token: str
-    strava_refresh_token: str | None = None
 
     # Server configuration
     port: int = 8000

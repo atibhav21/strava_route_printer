@@ -64,3 +64,9 @@ export interface DecodedPoint {
     lat: number;
     lng: number;
 }
+
+export interface Athlete {
+    id: number;
+    firstname?: string | null;
+    lastname?: string | null;
+}

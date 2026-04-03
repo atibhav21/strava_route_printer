@@ -37,3 +37,19 @@ class DetailedActivity(SummaryActivity):
     """Detailed activity information"""
 
     map: RouteMap
+
+
+class RouteStats(BaseModel):
+    """Activity statistics for an activity/route."""
+
+    distance: float
+    elevation_gain: float
+    moving_time: Optional[int] = None
+    elapsed_time: Optional[int] = None
+    average_speed: Optional[float] = None
+    max_speed: Optional[float] = None
+    average_heartrate: Optional[float] = None
+    max_heartrate: Optional[float] = None
+    average_watts: Optional[float] = None
+    kilojoules: Optional[float] = None
+

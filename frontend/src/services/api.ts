@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { Route, RouteDetails, RouteStats } from '../types';
+import { Athlete } from '../types';
 
 const api = axios.create({
     baseURL: '/api',
-    timeout: 10000,
+    timeout: 30000,
 });
 
 export const searchRoutes = async (query: string): Promise<Route[]> => {
@@ -23,11 +24,13 @@ export const getRouteStats = async (routeId: number): Promise<RouteStats> => {
     return response.data;
 };
 
-export const uploadRouteFromFile = async (file: File): Promise<RouteDetails> => {
-    const form = new FormData();
-    form.append('file', file);
-    const response = await api.post<RouteDetails>('/routes/upload', form);
+export const whoAmI = async (): Promise<Athlete> => {
+    const response = await api.get<Athlete>(`/strava/whoami`);
     return response.data;
+};
+
+export const logout = async (): Promise<void> => {
+    await api.post(`/strava/logout`);
 };
 
 // Utility function to decode polyline
