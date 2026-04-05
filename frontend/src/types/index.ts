@@ -39,6 +39,17 @@ export interface RouteStats {
     kilojoules?: number;
 }
 
+export interface ThemePrintConfig {
+    footerBg: string;
+    footerText: string;
+    footerTextMuted: string;
+    accentRule: string;
+    mapStyleId: string;        // just the style ID, e.g. 'dark-v11'
+    routeStrokeColor: string;  // hex without #
+    routeStrokeWidth: number;
+    printStyleUrl: string;
+}
+
 export interface Theme {
     name: string;
     displayName: string;
@@ -58,6 +69,7 @@ export interface Theme {
         routeWidth: number;
         routeOpacity: number;
     };
+    print: ThemePrintConfig;
 }
 
 export interface DecodedPoint {

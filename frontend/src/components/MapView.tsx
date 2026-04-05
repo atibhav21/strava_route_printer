@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { RouteDetails, Theme } from '../types';
-import { decodePolyline } from '../services/api';
+import { decodePolyline } from '../utils/decodePolyline';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || '';
@@ -15,7 +15,7 @@ interface MapViewProps {
 export const MapView = ({ route, theme, onMapReady }: MapViewProps) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
-    const routeCoordinatesRef = useRef<[number, number][] | null>(null);
+    const [routeCoordinates, setRouteCoordinates] = useState<[number, number][] | null>(null);
 
     // Initialize map
     useEffect(() => {
@@ -32,10 +32,112 @@ export const MapView = ({ route, theme, onMapReady }: MapViewProps) => {
         map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
         onMapReady?.(map.current);
 
+        map.current.on('style.load', () => {
+            const layers = map.current?.getStyle().layers || [];
+
+            for (const layer of layers) {
+                if (
+                    layer.type === 'symbol' &&
+                    layer.layout &&
+                    layer.layout['text-field']
+                ) {
+                    map.current?.setLayoutProperty(
+                        layer.id,
+                        'visibility',
+                        'none'
+                    );
+                }
+            }
+
+            applyRoute.current();
+        });
+
         return () => {
             map.current?.remove();
         };
     }, []);
+
+    const cacheRouteCoordinates = useCallback((route: RouteDetails) => {
+        if (!route) return;
+
+        const polyline = route.map.polyline || route.map.summary_polyline;
+        if (polyline) {
+            setRouteCoordinates(decodePolyline(polyline));
+        }
+    }, [route, setRouteCoordinates]);
+
+    const applyRoute = useRef<() => void>(() => { });
+
+    applyRoute.current = () => {
+        if (!map.current || !route) return;
+
+        // Decode and cache the current route coordinates (if any)
+        if (!routeCoordinates) {
+            return;
+        }
+
+        if (!routeCoordinates) return;
+
+        // Remove existing route layer and source
+        if (map.current.getLayer('route')) {
+            map.current.removeLayer('route');
+        }
+        if (map.current.getSource('route')) {
+            map.current.removeSource('route');
+        }
+
+        // Add route source and layer
+        map.current.addSource('route', {
+            type: 'geojson',
+            data: {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'LineString',
+                    coordinates: routeCoordinates,
+                },
+            },
+        });
+
+        map.current.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round',
+            },
+            paint: {
+                'line-color': theme.map.routeColor,
+                'line-width': theme.map.routeWidth,
+                'line-opacity': theme.map.routeOpacity,
+            },
+        });
+
+        // Fit map to route bounds
+        const bounds = routeCoordinates?.reduce(
+            (bounds, coord) => bounds.extend(coord as [number, number]),
+            new mapboxgl.LngLatBounds(routeCoordinates[0], routeCoordinates[0])
+        );
+
+        if (!bounds) return;
+
+        map.current.fitBounds(bounds, {
+            padding: 50,
+            maxZoom: 15,
+        });
+    };
+
+    // Update map when route changes
+    useEffect(() => {
+        if (!route) return;
+        cacheRouteCoordinates(route);
+    }, [route, cacheRouteCoordinates]);
+
+    useEffect(() => {
+        if (!routeCoordinates) return;
+        applyRoute.current();
+    }, [routeCoordinates]);
 
     // Update map style when theme changes
     useEffect(() => {
@@ -44,81 +146,6 @@ export const MapView = ({ route, theme, onMapReady }: MapViewProps) => {
         }
     }, [theme]);
 
-    // Update route when it or the map style changes
-    useEffect(() => {
-        if (!map.current) return;
-
-        // Decode and cache the current route coordinates (if any)
-        if (route) {
-            const polyline = route.map.polyline || route.map.summary_polyline;
-            if (!polyline) {
-                routeCoordinatesRef.current = null;
-            } else {
-                routeCoordinatesRef.current = decodePolyline(polyline);
-            }
-        } else {
-            routeCoordinatesRef.current = null;
-        }
-
-        const applyRouteFromCache = () => {
-            if (!map.current) return;
-            const coordinates = routeCoordinatesRef.current;
-            if (!coordinates || coordinates.length === 0) return;
-
-            // Remove existing route layer and source
-            if (map.current.getLayer('route')) {
-                map.current.removeLayer('route');
-            }
-            if (map.current.getSource('route')) {
-                map.current.removeSource('route');
-            }
-
-            // Add route source and layer
-            map.current.addSource('route', {
-                type: 'geojson',
-                data: {
-                    type: 'Feature',
-                    properties: {},
-                    geometry: {
-                        type: 'LineString',
-                        coordinates,
-                    },
-                },
-            });
-
-            map.current.addLayer({
-                id: 'route',
-                type: 'line',
-                source: 'route',
-                layout: {
-                    'line-join': 'round',
-                    'line-cap': 'round',
-                },
-                paint: {
-                    'line-color': theme.map.routeColor,
-                    'line-width': theme.map.routeWidth,
-                    'line-opacity': theme.map.routeOpacity,
-                },
-            });
-
-            // Fit map to route bounds
-            const bounds = coordinates.reduce(
-                (bounds, coord) => bounds.extend(coord as [number, number]),
-                new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
-            );
-
-            map.current.fitBounds(bounds, {
-                padding: 50,
-                maxZoom: 15,
-            });
-        };
-
-        if (map.current.isStyleLoaded()) {
-            applyRouteFromCache();
-        } else {
-            map.current.once('style.load', applyRouteFromCache);
-        }
-    }, [route, theme]);
 
     return (
         <div className="map-container">

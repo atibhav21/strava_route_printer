@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type mapboxgl from 'mapbox-gl';
 import { RouteDetails, RouteStats, Theme } from '../types';
-import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 import { resolveMapImageSrc, getStaticMapImageDimsForPaper, PaperSize } from '../services/mapExport';
 import { PrintableRoute, StatKey } from './PrintableRoute';
+import { blobUrlToBase64 } from '../utils/image';
+import { statValueFor } from '../utils/stats';
 
 type PrintComposerProps = {
     route: RouteDetails | null;
@@ -54,6 +54,8 @@ export const PrintComposer = ({ route, stats, theme, map }: PrintComposerProps) 
         'elevation_gain',
         'avg_pace',
     ]);
+
+    const mapImageRef = useRef<string>('');
 
     const [mapImageSrc, setMapImageSrc] = useState<string>('');
     const [mapImageLoading, setMapImageLoading] = useState(false);
@@ -116,40 +118,86 @@ export const PrintComposer = ({ route, stats, theme, map }: PrintComposerProps) 
 
     const handleDownloadPdf = async () => {
         if (!route) return;
-        if (!captureRef.current) return;
-        if (!map) return;
-        if (!mapImageSrc) {
-            setDownloadError('Map image is not ready yet. Try again in a moment.');
+        if (!mapImageRef.current) {
+            setDownloadError('Map image is not ready yet.');
             return;
         }
 
         setDownloadError(null);
         setDownloadLoading(true);
+
         try {
-            const canvas = await html2canvas(captureRef.current, {
-                backgroundColor: '#ffffff',
-                scale: 2,
-                useCORS: true,
-                logging: false,
-            });
-
-            const imgData = canvas.toDataURL('image/png');
-
+            const isA3 = paperSize === 'a3';
             const doc = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
-                format: paperSize === 'a3' ? 'a3' : 'letter',
+                format: isA3 ? 'a3' : 'letter',
             });
 
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const pageHeight = doc.internal.pageSize.getHeight();
+            const pageW = doc.internal.pageSize.getWidth();
+            const pageH = doc.internal.pageSize.getHeight();
 
-            doc.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
+            // ── Layout constants ──────────────────────────────────────────
+            const footerH = isA3 ? 70 : 55;
+            const mapH = pageH - footerH;
+
+            // ── 1. Map image ──────────────────────────────────────────────
+            // Convert blob URL to base64 so jsPDF can embed it
+            const imgBase64 = await blobUrlToBase64(mapImageRef.current);
+            doc.addImage(imgBase64, 'PNG', 0, 0, pageW, mapH, undefined, 'FAST');
+
+            const p = theme.print;
+
+            // Narrower content column — centered, ~60% of page width
+            const colLeft = pageW * 0.20;
+            const colRight = pageW * 0.80;
+            const colW = colRight - colLeft;
+
+            // Footer bg
+            doc.setFillColor(p.footerBg);
+            doc.rect(0, mapH, pageW, footerH, 'F');
+
+            // Accent rule — only under the content column, not full width
+            doc.setDrawColor(p.accentRule);
+            doc.setLineWidth(0.6);
+            doc.line(colLeft, mapH, colRight, mapH);
+
+            // Title — all caps, bold
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(isA3 ? 22 : 16);
+            doc.setTextColor(p.footerText);
+            doc.text(effectiveTitle.toUpperCase(), colLeft, mapH + (isA3 ? 14 : 11));
+
+            // Divider
+            const dividerY = mapH + (isA3 ? 28 : 22);
+            doc.setDrawColor(p.accentRule);
+            doc.setLineWidth(0.2);
+            doc.line(colLeft, dividerY, colRight, dividerY);
+
+            // Stats — distributed across the content column only
+            const statsY = dividerY + (isA3 ? 10 : 8);
+            const statColW = colW / selectedStatKeys.length;
+
+            selectedStatKeys.forEach((key, i) => {
+                const item = statValueFor({ key, route, stats });
+                const x = colLeft + i * statColW;
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(isA3 ? 14 : 10);
+                doc.setTextColor(p.footerText);
+                doc.text(item.unit ? `${item.value} ${item.unit}` : item.value, x, statsY);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(isA3 ? 7 : 5.5);
+                doc.setTextColor(p.footerTextMuted);
+                doc.text(item.label.toUpperCase(), x, statsY + (isA3 ? 6 : 4.5));
+            });
 
             const fileBase = sanitizeFileName(effectiveTitle) || `route_${route.id}`;
             doc.save(`${fileBase}.pdf`);
         } catch (e) {
-            setDownloadError('Failed to generate PDF. If the map export is tainted by cross-origin content, try again.');
+            console.error(e);
+            setDownloadError('Failed to generate PDF.');
         } finally {
             setDownloadLoading(false);
         }
@@ -228,25 +276,8 @@ export const PrintComposer = ({ route, stats, theme, map }: PrintComposerProps) 
                                 theme={theme}
                                 printTitle={effectiveTitle}
                                 selectedStatKeys={selectedStatKeys}
-                                mapImageSrc={mapImageSrc}
                                 paperSize={paperSize}
-                            />
-                        </div>
-
-                        {/* Offscreen, unscaled preview for stable PDF capture */}
-                        <div
-                            ref={captureRef}
-                            className="print-preview-capture"
-                            aria-hidden="true"
-                        >
-                            <PrintableRoute
-                                route={route}
-                                stats={stats}
-                                theme={theme}
-                                printTitle={effectiveTitle}
-                                selectedStatKeys={selectedStatKeys}
-                                mapImageSrc={mapImageSrc}
-                                paperSize={paperSize}
+                                onMapImageReady={(url) => { mapImageRef.current = url; }}
                             />
                         </div>
                     </div>

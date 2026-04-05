@@ -1,6 +1,5 @@
-import type mapboxgl from 'mapbox-gl';
 import { RouteDetails, Theme } from '../types';
-import { decodePolyline } from './api';
+import { decodePolyline } from '../utils/decodePolyline';
 
 export type PaperSize = 'letter' | 'a3';
 

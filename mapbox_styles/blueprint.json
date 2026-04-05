@@ -1,0 +1,194 @@
+{
+    "version": 8,
+    "name": "Blueprint",
+    "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}",
+    "sprite": "mapbox://sprites/mapbox/dark-v11",
+    "sources": {
+        "composite": {
+            "type": "vector",
+            "url": "mapbox://mapbox.mapbox-streets-v8"
+        }
+    },
+    "layers": [
+        {
+            "id": "background",
+            "type": "background",
+            "paint": {
+                "background-color": "#0d1b2e"
+            }
+        },
+        {
+            "id": "landuse",
+            "type": "fill",
+            "source": "composite",
+            "source-layer": "landuse",
+            "paint": {
+                "fill-color": "#0e2035",
+                "fill-opacity": 0.8
+            }
+        },
+        {
+            "id": "water",
+            "type": "fill",
+            "source": "composite",
+            "source-layer": "water",
+            "paint": {
+                "fill-color": "#0a2540"
+            }
+        },
+        {
+            "id": "waterway",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "waterway",
+            "paint": {
+                "line-color": "#0a2540",
+                "line-width": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    8,
+                    0.5,
+                    14,
+                    2
+                ]
+            }
+        },
+        {
+            "id": "admin-boundary",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "admin",
+            "filter": [
+                "==",
+                [
+                    "get",
+                    "admin_level"
+                ],
+                2
+            ],
+            "paint": {
+                "line-color": "#1a4a7a",
+                "line-width": 0.5,
+                "line-opacity": 0.4,
+                "line-dasharray": [
+                    4,
+                    2
+                ]
+            }
+        },
+        {
+            "id": "road-motorway-trunk",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "road",
+            "filter": [
+                "in",
+                [
+                    "get",
+                    "class"
+                ],
+                [
+                    "literal",
+                    [
+                        "motorway",
+                        "trunk"
+                    ]
+                ]
+            ],
+            "paint": {
+                "line-color": "#1a4a7a",
+                "line-width": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    8,
+                    0.5,
+                    14,
+                    2
+                ]
+            }
+        },
+        {
+            "id": "road-primary-secondary",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "road",
+            "filter": [
+                "in",
+                [
+                    "get",
+                    "class"
+                ],
+                [
+                    "literal",
+                    [
+                        "primary",
+                        "secondary"
+                    ]
+                ]
+            ],
+            "paint": {
+                "line-color": "#163d66",
+                "line-width": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    8,
+                    0.3,
+                    14,
+                    1.5
+                ]
+            }
+        },
+        {
+            "id": "road-street-tertiary",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "road",
+            "filter": [
+                "in",
+                [
+                    "get",
+                    "class"
+                ],
+                [
+                    "literal",
+                    [
+                        "tertiary",
+                        "street",
+                        "street_limited"
+                    ]
+                ]
+            ],
+            "paint": {
+                "line-color": "#112e4d",
+                "line-width": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    10,
+                    0.2,
+                    14,
+                    1
+                ]
+            }
+        }
+    ]
+}
