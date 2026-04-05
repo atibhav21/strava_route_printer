@@ -1,0 +1,393 @@
+{
+    "version": 8,
+    "name": "Forest",
+    "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}",
+    "sprite": "mapbox://sprites/mapbox/outdoors-v12",
+    "sources": {
+        "composite": {
+            "type": "vector",
+            "url": "mapbox://mapbox.mapbox-terrain-v2,mapbox.mapbox-streets-v8"
+        }
+    },
+    "layers": [
+        {
+            "id": "background",
+            "type": "background",
+            "paint": {
+                "background-color": "#c8bb97"
+            }
+        },
+        {
+            "id": "landcover-grass",
+            "type": "fill",
+            "source": "composite",
+            "source-layer": "landcover",
+            "filter": [
+                "in",
+                [
+                    "get",
+                    "class"
+                ],
+                [
+                    "literal",
+                    [
+                        "grass",
+                        "scrub",
+                        "crop"
+                    ]
+                ]
+            ],
+            "paint": {
+                "fill-color": "#b8c9a0",
+                "fill-opacity": 0.6
+            }
+        },
+        {
+            "id": "landcover-wood",
+            "type": "fill",
+            "source": "composite",
+            "source-layer": "landcover",
+            "filter": [
+                "==",
+                [
+                    "get",
+                    "class"
+                ],
+                "wood"
+            ],
+            "paint": {
+                "fill-color": "#8fa882",
+                "fill-opacity": 0.75
+            }
+        },
+        {
+            "id": "landuse-residential",
+            "type": "fill",
+            "source": "composite",
+            "source-layer": "landuse",
+            "filter": [
+                "==",
+                [
+                    "get",
+                    "class"
+                ],
+                "residential"
+            ],
+            "paint": {
+                "fill-color": "#d4c99a",
+                "fill-opacity": 0.5
+            }
+        },
+        {
+            "id": "landuse-park",
+            "type": "fill",
+            "source": "composite",
+            "source-layer": "landuse",
+            "filter": [
+                "in",
+                [
+                    "get",
+                    "class"
+                ],
+                [
+                    "literal",
+                    [
+                        "park",
+                        "pitch",
+                        "cemetery"
+                    ]
+                ]
+            ],
+            "paint": {
+                "fill-color": "#a3b88c",
+                "fill-opacity": 0.6
+            }
+        },
+        {
+            "id": "contour",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "contour",
+            "paint": {
+                "line-color": "#a89060",
+                "line-width": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    10,
+                    0.3,
+                    14,
+                    0.8
+                ],
+                "line-opacity": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    10,
+                    0.25,
+                    14,
+                    0.5
+                ]
+            }
+        },
+        {
+            "id": "contour-index",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "contour",
+            "filter": [
+                "==",
+                [
+                    "%",
+                    [
+                        "get",
+                        "ele"
+                    ],
+                    100
+                ],
+                0
+            ],
+            "paint": {
+                "line-color": "#8a7040",
+                "line-width": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    10,
+                    0.5,
+                    14,
+                    1.2
+                ],
+                "line-opacity": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    10,
+                    0.35,
+                    14,
+                    0.65
+                ]
+            }
+        },
+        {
+            "id": "water",
+            "type": "fill",
+            "source": "composite",
+            "source-layer": "water",
+            "paint": {
+                "fill-color": "#c8d8b0"
+            }
+        },
+        {
+            "id": "waterway",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "waterway",
+            "paint": {
+                "line-color": "#b0c89a",
+                "line-width": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    8,
+                    0.5,
+                    14,
+                    2
+                ]
+            }
+        },
+        {
+            "id": "admin-boundary",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "admin",
+            "filter": [
+                "==",
+                [
+                    "get",
+                    "admin_level"
+                ],
+                2
+            ],
+            "paint": {
+                "line-color": "#8a7040",
+                "line-width": 0.5,
+                "line-opacity": 0.4,
+                "line-dasharray": [
+                    4,
+                    2
+                ]
+            }
+        },
+        {
+            "id": "road-path-trail",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "road",
+            "filter": [
+                "in",
+                [
+                    "get",
+                    "class"
+                ],
+                [
+                    "literal",
+                    [
+                        "path",
+                        "track",
+                        "pedestrian"
+                    ]
+                ]
+            ],
+            "paint": {
+                "line-color": "#b09060",
+                "line-width": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    10,
+                    0.3,
+                    14,
+                    1
+                ],
+                "line-dasharray": [
+                    2,
+                    2
+                ]
+            }
+        },
+        {
+            "id": "road-motorway-trunk",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "road",
+            "filter": [
+                "in",
+                [
+                    "get",
+                    "class"
+                ],
+                [
+                    "literal",
+                    [
+                        "motorway",
+                        "trunk"
+                    ]
+                ]
+            ],
+            "paint": {
+                "line-color": "#c8aa70",
+                "line-width": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    8,
+                    0.8,
+                    14,
+                    2.5
+                ]
+            }
+        },
+        {
+            "id": "road-primary-secondary",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "road",
+            "filter": [
+                "in",
+                [
+                    "get",
+                    "class"
+                ],
+                [
+                    "literal",
+                    [
+                        "primary",
+                        "secondary"
+                    ]
+                ]
+            ],
+            "paint": {
+                "line-color": "#c0a060",
+                "line-width": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    8,
+                    0.5,
+                    14,
+                    2
+                ]
+            }
+        },
+        {
+            "id": "road-street-tertiary",
+            "type": "line",
+            "source": "composite",
+            "source-layer": "road",
+            "filter": [
+                "in",
+                [
+                    "get",
+                    "class"
+                ],
+                [
+                    "literal",
+                    [
+                        "tertiary",
+                        "street",
+                        "street_limited"
+                    ]
+                ]
+            ],
+            "paint": {
+                "line-color": "#b89850",
+                "line-width": [
+                    "interpolate",
+                    [
+                        "linear"
+                    ],
+                    [
+                        "zoom"
+                    ],
+                    10,
+                    0.3,
+                    14,
+                    1.2
+                ]
+            }
+        }
+    ]
+}

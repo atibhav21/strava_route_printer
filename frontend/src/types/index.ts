@@ -40,11 +40,10 @@ export interface RouteStats {
 }
 
 export interface ThemePrintConfig {
-    footerBg: string;
+    pageBg: string;
     footerText: string;
     footerTextMuted: string;
     accentRule: string;
-    mapStyleId: string;        // just the style ID, e.g. 'dark-v11'
     routeStrokeColor: string;  // hex without #
     routeStrokeWidth: number;
     printStyleUrl: string;

@@ -39,6 +39,21 @@ const paperOptions: { key: PaperSize; label: string }[] = [
     { key: 'a3', label: 'A3' },
 ];
 
+const getElevationPoints = (route: RouteDetails): number[] => {
+    // If your route has altitude stream data attached, use that.
+    // Otherwise fall back to a flat line so the silhouette still renders.
+    if ((route as any).altitude_stream?.length) {
+        return (route as any).altitude_stream as number[];
+    }
+    // Strava segments sometimes carry elevation data
+    if (route.segments?.length) {
+        return route.segments
+            .map((s: any) => s.average_grade ?? 0)
+            .filter((v: number) => v != null);
+    }
+    return [];
+};
+
 const sanitizeFileName = (name: string) =>
     name
         .trim()
@@ -116,6 +131,7 @@ export const PrintComposer = ({ route, stats, theme, map }: PrintComposerProps) 
         });
     };
 
+
     const handleDownloadPdf = async () => {
         if (!route) return;
         if (!mapImageRef.current) {
@@ -128,6 +144,8 @@ export const PrintComposer = ({ route, stats, theme, map }: PrintComposerProps) 
 
         try {
             const isA3 = paperSize === 'a3';
+            const p = theme.print;
+
             const doc = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
@@ -137,66 +155,129 @@ export const PrintComposer = ({ route, stats, theme, map }: PrintComposerProps) 
             const pageW = doc.internal.pageSize.getWidth();
             const pageH = doc.internal.pageSize.getHeight();
 
+            // ── Page background ───────────────────────────────────────────
+            doc.setFillColor(p.pageBg);
+            doc.rect(0, 0, pageW, pageH, 'F');
+
             // ── Layout constants ──────────────────────────────────────────
-            const footerH = isA3 ? 70 : 55;
-            const mapH = pageH - footerH;
+            const margin = isA3 ? 10 : 8;      // outer page margin
+            const footerH = isA3 ? 72 : 58;     // footer height
+            const elevH = isA3 ? 18 : 14;     // elevation profile height
+            const mapW = pageW - margin * 2;
+            const mapH = pageH - footerH - elevH - margin * 2;
 
-            // ── 1. Map image ──────────────────────────────────────────────
-            // Convert blob URL to base64 so jsPDF can embed it
-            const imgBase64 = await blobUrlToBase64(mapImageRef.current);
-            doc.addImage(imgBase64, 'PNG', 0, 0, pageW, mapH, undefined, 'FAST');
+            // ── Map image (inset with margin) ─────────────────────────────
+            doc.addImage(
+                mapImageRef.current, 'PNG',
+                margin, margin,
+                mapW, mapH,
+                undefined, 'FAST'
+            );
 
-            const p = theme.print;
+            // ── Elevation profile ─────────────────────────────────────────
+            // Filled silhouette drawn as a polygon using elevation data points
+            const elevY = margin + mapH;
+            const elevPoints = getElevationPoints(route); // see helper below
 
-            // Narrower content column — centered, ~60% of page width
-            const colLeft = pageW * 0.20;
-            const colRight = pageW * 0.80;
-            const colW = colRight - colLeft;
+            if (elevPoints.length > 1) {
+                const min = Math.min(...elevPoints);
+                const max = Math.max(...elevPoints);
+                const range = max - min || 1;
 
-            // Footer bg
-            doc.setFillColor(p.footerBg);
-            doc.rect(0, mapH, pageW, footerH, 'F');
+                const xs = elevPoints.map((_, i) =>
+                    margin + (i / (elevPoints.length - 1)) * mapW
+                );
+                const ys = elevPoints.map((v) =>
+                    elevY + elevH - ((v - min) / range) * elevH * 0.85
+                );
 
-            // Accent rule — only under the content column, not full width
-            doc.setDrawColor(p.accentRule);
-            doc.setLineWidth(0.6);
-            doc.line(colLeft, mapH, colRight, mapH);
+                doc.setFillColor(p.accentRule);
 
-            // Title — all caps, bold
+                // Build polygon: left edge down, across points, right edge down, back
+                const polyPoints: { x: number; y: number }[] = [
+                    { x: margin, y: elevY + elevH },
+                    ...xs.map((x, i) => ({ x, y: ys[i] })),
+                    { x: margin + mapW, y: elevY + elevH },
+                ];
+
+                // jsPDF lines() expects relative coords — use lines from first point
+                const first = polyPoints[0];
+                const rest = polyPoints.slice(1).map((pt, i) => {
+                    const prev = polyPoints[i];
+                    return [pt.x - prev.x, pt.y - prev.y];
+                });
+
+                doc.lines(rest as any, first.x, first.y, [1, 1], 'F');
+            } else {
+                // Fallback: solid bar
+                doc.setFillColor(p.accentRule);
+                doc.rect(margin, elevY, mapW, elevH, 'F');
+            }
+
+            // ── Footer ────────────────────────────────────────────────────
+            const footerY = elevY + elevH;
+            const pad = isA3 ? 10 : 8;
+            const halfW = mapW / 2;
+
+            // Left column: title + date
+            const titleSize = isA3 ? 20 : 15;
+            const titleY = footerY + (isA3 ? 14 : 11);
+
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(isA3 ? 22 : 16);
+            doc.setFontSize(titleSize);
             doc.setTextColor(p.footerText);
-            doc.text(effectiveTitle.toUpperCase(), colLeft, mapH + (isA3 ? 14 : 11));
+            doc.text(effectiveTitle.toUpperCase(), margin + pad, titleY);
 
-            // Divider
-            const dividerY = mapH + (isA3 ? 28 : 22);
-            doc.setDrawColor(p.accentRule);
-            doc.setLineWidth(0.2);
-            doc.line(colLeft, dividerY, colRight, dividerY);
+            const athlete =
+                route.athlete?.firstname || route.athlete?.lastname
+                    ? [route.athlete.firstname, route.athlete.lastname]
+                        .filter(Boolean).join(' ')
+                    : null;
+            const dateStr = route.timestamp
+                ? new Date(route.timestamp * 1000).toLocaleDateString('en-GB', {
+                    day: 'numeric', month: 'long', year: 'numeric',
+                })
+                : null;
+            const subtitle = [athlete, dateStr].filter(Boolean).join(' · ');
 
-            // Stats — distributed across the content column only
-            const statsY = dividerY + (isA3 ? 10 : 8);
-            const statColW = colW / selectedStatKeys.length;
+            if (subtitle) {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(isA3 ? 9 : 7);
+                doc.setTextColor(p.footerTextMuted);
+                doc.text(subtitle, margin + pad, titleY + (isA3 ? 8 : 6));
+            }
+
+            // Right column: stats in 2-column grid
+            const statsStartX = margin + halfW;
+            const statColW = halfW / 2 - pad;
+            const statRowH = isA3 ? 14 : 11;
+            const statsStartY = footerY + (isA3 ? 10 : 8);
+            const valueSize = isA3 ? 11 : 9;
+            const labelSize = isA3 ? 7 : 5.5;
 
             selectedStatKeys.forEach((key, i) => {
                 const item = statValueFor({ key, route, stats });
-                const x = colLeft + i * statColW;
+                const col = i % 2;
+                const row = Math.floor(i / 2);
+                const x = statsStartX + col * (statColW + pad);
+                const y = statsStartY + row * statRowH;
 
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(isA3 ? 14 : 10);
+                doc.setFontSize(valueSize);
                 doc.setTextColor(p.footerText);
-                doc.text(item.unit ? `${item.value} ${item.unit}` : item.value, x, statsY);
+                doc.text(item.unit ? `${item.value}${item.unit}` : item.value, x, y);
 
                 doc.setFont('helvetica', 'normal');
-                doc.setFontSize(isA3 ? 7 : 5.5);
+                doc.setFontSize(labelSize);
                 doc.setTextColor(p.footerTextMuted);
-                doc.text(item.label.toUpperCase(), x, statsY + (isA3 ? 6 : 4.5));
+                doc.text(item.label, x, y + (isA3 ? 5 : 4));
             });
 
+            // ── Save ──────────────────────────────────────────────────────
             const fileBase = sanitizeFileName(effectiveTitle) || `route_${route.id}`;
             doc.save(`${fileBase}.pdf`);
         } catch (e) {
-            console.error(e);
+            console.error('PDF generation failed:', e);
             setDownloadError('Failed to generate PDF.');
         } finally {
             setDownloadLoading(false);
